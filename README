@@ -1,0 +1,33 @@
+KeepNote - Note-taking and organization
+Extensions source code
+Copyright 2010 Matt Rasmussen
+rasmus@mit.edu
+http://rasm.ods.org/keepnote
+
+
+This package contains a collection of extensions for the KeepNote note-taking 
+application (http://rasm.ods.org/keepnote).  
+
+The extensions are organized into three sets:
+
+1. builtin
+
+  These extensions come bundled with the KeepNote application.
+
+2. stable
+
+  These are additional extensions that have been tested enough to share
+  with other people interested in trying them.
+
+3. testing
+
+  These are newly received extensions from other developers that are
+  waiting review.  They may be well functioning or unstable.  Users 
+  should only use these extensions if they are willing to review the
+  source code themselves.
+
+
+If you are interested in contributing your own extension to this collection
+send a patch or git pull request to rasmus@mit.edu or my github page
+http://github.com/mdrasmus/keepnote-extensions
+

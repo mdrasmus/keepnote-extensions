@@ -57,7 +57,7 @@ import gobject
 import keepnote
 from keepnote import unicode_gtk
 from keepnote.notebook import NoteBookError, get_valid_unique_filename,\
-    CONTENT_TYPE_DIR, NODE_META_FILE, NoteBookNodeMetaData
+    CONTENT_TYPE_DIR, attach_file
 from keepnote import notebook as notebooklib
 from keepnote import tasklib
 from keepnote.gui import extension
@@ -78,7 +78,7 @@ except ImportError:
 
 class Extension (extension.Extension):
     
-    version = (0, 1)
+    version = (0, 2)
     name = "Import Folder Tree"
     author = "Will Rouesnel <electricitylikesme@hotmail.com>"
     description = "Imports a folder tree as nodes in a notebook"
@@ -95,12 +95,12 @@ class Extension (extension.Extension):
 
 
     def get_depends(self):
-        return [("keepnote", ">=", (0, 6, 1))]
+        return [("keepnote", ">=", (0, 6, 3))]
 
 
     def on_add_ui(self, window):
         """Initialize extension for a particular window"""
-
+        
         # TODO: ACTION GROUP MUST BE PER WINDOW
         # add menu options
         self._action_groups[window] = gtk.ActionGroup("MainWindow")
@@ -165,138 +165,109 @@ class Extension (extension.Extension):
         if notebook is None:
             return
 
-        if window:
-            import_folder(notebook, filename, window, task=None, widget=widget)
-
-            # check exceptions
-            try:
-                window.set_status("Folder imported.")
-                return True
-
-            except NoteBookError:
-                window.set_status("")
-                window.error("Error while importing folder.")
-                return False
-
-            except Exception:
-                window.set_status("")
-                window.error("unknown error")
-                return False
-
+        # Get the node we're going to attach to
+        if window is None:
+            # Can't get a node, so we add to the base node
+            node = notebook
         else:
-            import_folder(notebook, filename, window=window, task=None, widget=widget)
+            # Ask the window for the currently selected nodes
+            nodes, widget = window.get_selected_nodes(widget)
+            # Use only the first
+            node = nodes[0]
 
-def import_folder(notebook, filename, window=None, task=None, widget="focus"):
-    """Import a folder tree as a subfolder of the current item
+        try:
+            import_folder(node, filename, task=None)
 
-       filename -- filename of folder to import
+            if window:
+                window.set_status("Folder imported.")
+            return True
+    
+        except NoteBookError:
+            if window:
+                window.set_status("")
+                window.error("Error while importing folder.", 
+                             e, sys.exc_info()[2])
+            else:
+                self.app.error("Error while importing folder.", 
+                               e, sys.exc_info()[2])
+            return False
+
+        except Exception, e:
+            if window:
+                window.set_status("")
+                window.error("unknown error", e, sys.exc_info()[2])
+            else:
+                self.app.error("unknown error", e, sys.exc_info()[2])
+            return False
+
+
+def import_folder(node, filename, task=None):
     """
+    Import a folder tree as a subfolder of the current item
+
+    node     -- node to attach folder to
+    filename -- filename of folder to import
+    task     -- Task object to track progress
+    """
+
+    # TODO: Exceptions, intelligent error handling
+    # For windows: 
+    # Deep paths are handled by unicode "\\?\" extension to filename.
+
 
     if task is None:
         # create dummy task if needed
         task = tasklib.Task()
     
+
     # Determine number of files in advance so we can have a progress bar
     nfiles = 0
     for root, dirs, files in os.walk(filename):
         nfiles += len(files) # Add files found in current dir
         task.set_message(("text", "Found %i files..." % nfiles))
-    
-    # Get the node we're going to attach to
-    node = None
-    if window is None:
-        # Can't get a node, so we add to the base node
-        node = notebook.get_node_by_id(notebook.get_universal_root_id())
-    else:
-        # Ask the window for the currently selected nodes
-        nodes, widget = window.get_selected_nodes(widget)
-        # Use only the first
-        node = nodes[0]
-    
-    # Make sure initial child is none
-    child = None
-    nfilescomplete = 0 # updates progress bar
-    
+
+
     # Make a node based on the root - so we have an origin to import to
-    new_filename = os.path.basename(filename)
-    path = notebooklib.get_valid_unique_filename(node.get_path(), new_filename)    
-    child = notebook.new_node(CONTENT_TYPE_DIR,
-                              path,
-                              node,
-                              {"title": new_filename})
-    child.create()
-    node.add_child(child)
-    child.save(True)
+    rootnode = node.new_child(CONTENT_TYPE_DIR, os.path.basename(filename))
+    rootnode.set_attr("title", os.path.basename(filename))
+    filename2node = {filename: rootnode}
     
-    node = child
-    rootnode = node
-    
-    # TODO: Exceptions, intelligent error handling, deep paths
-    # DONE? Deep paths are handled by unicode "\\?\" extension to filename. Does this break in Linux?
+
+
+    nfilescomplete = 0 # updates progress bar
+
+
     # Walk directory we're importing and create nodes
     for root, dirs, files in os.walk(filename):
-        # Get the relative path of the directory
-        #new_filename = os.path.relpath(root, filename)
-        new_filename = root[len(filename)+1:]
         
-        # Don't do anything if we're root, otherwise make the node directories
-        if len(new_filename) is not 0:
-            path = notebooklib.get_unique_filename(rootnode.get_path(), new_filename)
+        # create node for directory
+        if root == filename:
+            parent = rootnode
+        else:
+            parent2 = filename2node.get(os.path.dirname(root), None)
+            if parent2 is None:
+                keepnote.log_message("parent node not found '%s'.\n" % root)
+                continue
             
-            # Parent node will be in the root of path directory, read it off the disk
-            ParentNodeMeta = NoteBookNodeMetaData() # Initialize a meta-data object
-            tail, head = os.path.split(path)
-            ParentNodeMeta.read( os.path.join(tail, NODE_META_FILE), notebook.notebook_attrs )
-            
-            node = notebook.get_node_by_id(ParentNodeMeta.attr.get("nodeid"))        
-            
-            # Make a node directory
-            child = notebook.new_node(CONTENT_TYPE_DIR,
-                                      path,
-                                      node,
-                                      {"title": os.path.basename(new_filename)})
-            child.create()
-            node.add_child(child)
-            child.save(True)
-        
-        for file in files:
-            # Get relative path of the file
-            #new_filename = os.path.relpath(os.path.join(root, file), filename)
-            new_filename = os.path.join(root, file)[len(filename)+1:]
-            
-            path = notebooklib.get_unique_filename(rootnode.get_path(), new_filename)
-            
-            content_type = mimetypes.guess_type(os.path.join(root, file))[0]
-            if content_type is None:
-                content_type = "application/octet-stream"
-            
-            # Parent node will be 1 dir down, read it off the disk
-            ParentNodeMeta = NoteBookNodeMetaData() # Initialize a meta-data object
-            tail, head = os.path.split(path)
-            ParentNodeMeta.read( os.path.join(tail, NODE_META_FILE), notebook.notebook_attrs )
-            
-            node = notebook.get_node_by_id(ParentNodeMeta.attr.get("nodeid"))  
-            
-            # Make a node directory
-            child = notebook.new_node(
-                    content_type, 
-                    path,
-                    node,
-                    {"payload_filename": new_filename,
-                     "title": os.path.basename(new_filename)})
-            child.create()
-            node.add_child(child)
-            if keepnote.get_platform() is "windows":
-                child.set_payload( "\\\\?\\" + os.path.join(root, file) )
-            else:
-                child.set_payload(os.path.join(root, file))
-            child.save(True)
-            
-            #Commented out coz we don't use them anyway currently
-            #task.set_message(("text", "Imported %i // %i files..." % nfilescomplete % nfiles))
-            #task.set_percent(float(nfilescomplete) / float(nfiles))
+            parent = parent2.new_child(CONTENT_TYPE_DIR,
+                                       os.path.basename(root))
+            parent.set_attr("title", os.path.basename(root))
+            filename2node[root] = parent
 
-    if task:
-        task.finish()
+        
+        # create nodes for files
+        for fn in files:
+            if keepnote.get_platform() is "windows":
+                fn = "\\\\?\\" + os.path.join(root, fn)
+            else:
+                fn = os.path.join(root, fn)
+            child = attach_file(fn, parent)
+            
+            nfilescomplete += 1
+            task.set_message(("text", "Imported %i / %i files..." % 
+                              (nfilescomplete, nfiles)))
+            task.set_percent(float(nfilescomplete) / float(nfiles))
+
+    task.finish()
                      
         
