@@ -153,7 +153,8 @@ class Extension (keepnote.gui.extension.Extension):
         dialog = gtk.FileChooserDialog(
             "import ncd file", None, 
             action=gtk.FILE_CHOOSER_ACTION_OPEN, 
-            buttons=(gtk.STOCK_CANCEL,gtk.RESPONSE_CANCEL,gtk.STOCK_OPEN,gtk.RESPONSE_OK))
+            buttons=(gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
+                     gtk.STOCK_OPEN, gtk.RESPONSE_OK))
         
         file_filter = gtk.FileFilter()
         file_filter.add_pattern("*.ncd")
@@ -171,7 +172,14 @@ class Extension (keepnote.gui.extension.Extension):
             if dialog.get_filename():
                 ncd_file = dialog.get_filename()
                 if notebook is not None:
-                    import_ncd_file(window, ncd_file)
+
+                    nodes = window.get_selected_nodes()
+                    if len(nodes) == 1:
+                       parent = nodes[0]    
+                    else:
+                       parent = window.get_notebook()
+
+                    import_ncd_file(parent, ncd_file)
                 else:
                     print "WARNING: you need an notebook before you can import"
             # self.close_notebook()
@@ -179,7 +187,7 @@ class Extension (keepnote.gui.extension.Extension):
 
     
 
-def import_ncd_file(window, file):
+def import_ncd_file(node, file):
     # is this really an .ncd file?
     counter = 10
     fd = open(file,r'r')
@@ -193,39 +201,33 @@ def import_ncd_file(window, file):
     fd.close()
     if ncd_identified == False:
         dialog = gtk.MessageDialog(
-           None, gtk.DIALOG_MODAL, gtk.MESSAGE_INFO, 
-           gtk.BUTTONS_OK,"Sorry, this is not a data file from the free version of NoteCase")
+           None, gtk.DIALOG_MODAL, gtk.MESSAGE_INFO, gtk.BUTTONS_OK,
+           "Sorry, this is not a data file from the free version of NoteCase")
         dialog.run()
         dialog.destroy()
         return
 
    # create first node of the imported file
     pos = "sibling"
-    nodes = window.get_selected_nodes()
-    if len(nodes) == 1:
-        parent = nodes[0]    
-    else:
-        parent = window.get_notebook()
-    if pos == "sibling" and parent.get_parent() is not None:
-        index = parent.get_attr("order") + 1
-        parent = parent.get_parent()
+    if pos == "sibling" and node.get_parent() is not None:
+        index = node.get_attr("order") + 1
+        node = node.get_parent()
     else:
         index = None
-    node = parent.new_child(notebooklib.CONTENT_TYPE_DIR,
-                            notebooklib.DEFAULT_DIR_NAME,index)
+    node = node.new_child(notebooklib.CONTENT_TYPE_DIR,
+                          notebooklib.DEFAULT_DIR_NAME, index)
     node.rename(unicode(file.split(os.sep)[-1],'utf8'))
     
    # read in file at once
     file_data = ''
-    #try:
-    fd = open(file,r'r')
+    fd = open(file, 'r')
     file_data = fd.read()
     fd.close()
     
     myparser = MyParser()
-    myparser.parse(file_data,node)
-    #except:
-    #    pass 
+    myparser.parse(file_data, node)
+
+
 
 class MyParser(sgmllib.SGMLParser):
     def __init__(self, verbose=1):
@@ -243,36 +245,43 @@ class MyParser(sgmllib.SGMLParser):
         self.node_expanded=False
         sgmllib.SGMLParser.reset(self)
         
-    def parse(self,data,node):
+    def parse(self, data, node):
         self.node = node
         self.feed(data)
         self.close()
     
     def unknown_starttag(self, tag, attrs):
         if tag != "meta":
-            strattrs = "".join([' %s="%s"' % (key, value) for key, value in attrs])
+            strattrs = "".join([' %s="%s"' % (key, value) 
+                                for key, value in attrs])
             self.pieces.append("<%(tag)s%(strattrs)s>" % locals())
 
     def unknown_endtag(self, tag):
         self.pieces.append("</%(tag)s>" % locals())
 
     def handle_charref(self, ref):  
-        # called for each character reference, e.g. for "&#160;", ref will be "160"
+        # called for each character reference, e.g. for "&#160;", 
+        # ref will be "160"
         # Reconstruct the original character reference.
         self.pieces.append("&#%(ref)s;" % locals())
 
     def handle_entityref(self, ref):       
-        # called for each entity reference, e.g. for "&copy;", ref will be "copy"
+        # called for each entity reference, e.g. for "&copy;", 
+        # ref will be "copy".
         # Reconstruct the original entity reference.
         self.pieces.append("&%(ref)s" % locals())
-        # standard HTML entities are closed with a semicolon; other entities are not
+        # standard HTML entities are closed with a semicolon; 
+        # other entities are not
         if htmlentitydefs.entitydefs.has_key(ref):
             self.pieces.append(";")
 
     def start_img(self, attrs):
         # is this an embedded jpeg?
         sstring = r'data:image/jpeg;base64,'
-        if attrs[0][0] == "title" and attrs[1][0] == "src" and attrs[1][1][:len(sstring)] == sstring:
+        if (attrs[0][0] == "title" and 
+            attrs[1][0] == "src" and 
+            attrs[1][1][:len(sstring)] == sstring):
+
             imagetitle = attrs[0][1]
             imagestr = ""
             imagedata = attrs[1][1][len(sstring):]
@@ -288,9 +297,11 @@ class MyParser(sgmllib.SGMLParser):
             padding = padder * "="
             imagestr += padding
             image = base64.b64decode(imagestr)
-            fd = open(fname,r'w')
+
+            fd = open(fname, 'w')
             fd.write(image)
             fd.close()
+
             # append link into the page
             self.pieces.append('<img src="'+imagetitle+'" >')
         
@@ -323,9 +334,11 @@ class MyParser(sgmllib.SGMLParser):
     def start_dl(self, attrs):
         self.last_xtag = self.xtag
         self.xtag = "start_dl"
-        if self.last_xtag == "start_dd" and self.xtag == "start_dl" and len(self.pieces) != 0:
+        if (self.last_xtag == "start_dd" and self.xtag == "start_dl" and 
+            len(self.pieces) != 0):
             write_node(self.node,self.pieces)
-        xnode = self.node.new_child(notebooklib.CONTENT_TYPE_PAGE,notebooklib.DEFAULT_PAGE_NAME)
+        xnode = self.node.new_child(notebooklib.CONTENT_TYPE_PAGE,
+                                    notebooklib.DEFAULT_PAGE_NAME)
         xnode.rename(u"anonymous")
 
     def end_dl(self):
@@ -344,7 +357,8 @@ class MyParser(sgmllib.SGMLParser):
         if child_name == 'anonymous':
             xnode = child
         else:
-            xnode = self.node.new_child(notebooklib.CONTENT_TYPE_PAGE,notebooklib.DEFAULT_PAGE_NAME)
+            xnode = self.node.new_child(notebooklib.CONTENT_TYPE_PAGE,
+                                        notebooklib.DEFAULT_PAGE_NAME)
         # if the environment of the underlying os is set up wrong
         # creating files with utf8 characters will fail
         # we then create the filename with an random name but set the node title correctly
@@ -373,7 +387,7 @@ class MyParser(sgmllib.SGMLParser):
         self.xtag = "end_dd"
         if self.xtag == "end_dd" and not self.last_xtag == "end_dl":
             # write data into node
-            write_node(self.node,self.pieces)
+            write_node(self.node, self.pieces)
         xnode = self.node.get_parent()
         self.node = xnode
         self.pieces = []
@@ -382,7 +396,7 @@ class MyParser(sgmllib.SGMLParser):
         """Return processed HTML as a single string"""
         return "".join(self.pieces)
 
-def write_node(node,data):
+def write_node(node, data):
     skel1 = '<html><head></head><body>'
     skel2 = '</body></html>' 
     fname = node.get_data_file()

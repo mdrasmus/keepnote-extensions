@@ -1,7 +1,7 @@
 """
 
     KeepNote
-    Import folder structure extension
+    Import plain text files extension
 
 """
 from keepnote.timestamp import get_timestamp
@@ -59,7 +59,7 @@ from keepnote import unicode_gtk
 from keepnote.notebook import NoteBookError, get_valid_unique_filename,\
     CONTENT_TYPE_DIR, attach_file
 from keepnote import notebook as notebooklib
-from keepnote import tasklib
+from keepnote import tasklib, safefile
 from keepnote.gui import extension, FileChooserDialog
 
 # pygtk imports
@@ -79,9 +79,9 @@ except ImportError:
 class Extension (extension.Extension):
     
     version = (0, 2)
-    name = "Import Folder Tree"
-    author = "Will Rouesnel <electricitylikesme@hotmail.com>"
-    description = "Imports a folder tree as nodes in a notebook"
+    name = "Import Plain Text"
+    author = "Matt Rasmussen <rasmus@mit.edu>"
+    description = "Imports plain text files as nodes in a notebook"
 
 
     def __init__(self, app):
@@ -104,10 +104,9 @@ class Extension (extension.Extension):
         # add menu options
         self._action_groups[window] = gtk.ActionGroup("MainWindow")
         self._action_groups[window].add_actions([
-            ("Import Folder", gtk.STOCK_ADD, "_Attach Folder...",
-             "", _("Attach a folder and its contents to the notebook"),
-             lambda w: self.on_import_folder_tree(window,
-                                               window.get_notebook())),
+            ("Import Txt", None, _("Import _Txt..."),
+             "", _("Import plain text files to the notebook"),
+             lambda w: self.on_import_txt(window, window.get_notebook())),
             ])
         window.get_uimanager().insert_action_group(
             self._action_groups[window], 0)
@@ -117,28 +116,18 @@ class Extension (extension.Extension):
             """
             <ui>
             <menubar name="main_menu_bar">
-               <menu action="Edit">
-                 <placeholder name="Viewer">
-                     <menuitem action="Import Folder"/>
-                 </placeholder>
+               <menu action="File">
+                 <menu action="Import">
+                     <menuitem action="Import Txt"/>
+                 </menu>
                </menu>
-            </menubar>
-            
-            <menubar name="popup_menus">
-                <menu action="treeview_popup">
-                    <menuitem action="Import Folder"/>
-                </menu>
-            
-                <menu action="listview_popup">
-                    <menuitem action="Import Folder"/>
-                </menu>
             </menubar>
             </ui>
             """)
 
 
-    def on_import_folder_tree(self, window, notebook):
-        """Callback from gui for importing a folder tree"""
+    def on_import_txt(self, window, notebook):
+        """Callback from gui for importing a plain text file"""
         
         # Ask the window for the currently selected nodes
         nodes = window.get_selected_nodes()
@@ -148,36 +137,38 @@ class Extension (extension.Extension):
 
 
         dialog = FileChooserDialog(
-            "Attach Folder", window, 
+            "Import Plain Text", window, 
             action=gtk.FILE_CHOOSER_ACTION_SELECT_FOLDER,
             buttons=("Cancel", gtk.RESPONSE_CANCEL,
-                     "Attach Folder", gtk.RESPONSE_OK))        
+                     "Import", gtk.RESPONSE_OK))
+        dialog.set_select_multiple(True)
         response = dialog.run()
 
-        if response == gtk.RESPONSE_OK and dialog.get_filename():
-            filename = unicode_gtk(dialog.get_filename())
+        if response == gtk.RESPONSE_OK and dialog.get_filenames():
+            filenames = map(unicode_gtk, dialog.get_filename())
             dialog.destroy()
 
-            self.import_folder_tree(node, filename, window=window)
+            self.import_plain_text(node, filenames, window=window)
         else:
             dialog.destroy()
 
 
-    def import_folder_tree(self, node, filename, window=None):
+    def import_folder_tree(self, node, filenames, window=None):
         try:
-            import_folder(node, filename, task=None)
+            for filename in filenames:
+                import_txt(node, filename, task=None)
 
             if window:
-                window.set_status("Folder imported.")
+                window.set_status("Text files imported.")
             return True
     
         except NoteBookError:
             if window:
                 window.set_status("")
-                window.error("Error while importing folder.", 
+                window.error("Error while importing plain text files.", 
                              e, sys.exc_info()[2])
             else:
-                self.app.error("Error while importing folder.", 
+                self.app.error("Error while importing plain text files.", 
                                e, sys.exc_info()[2])
             return False
 
@@ -191,65 +182,37 @@ class Extension (extension.Extension):
 
 
 
-def import_folder(node, filename, task=None):
+def import_txt(node, filename, index=None, task=None):
     """
-    Import a folder tree as a subfolder of the current item
+    Import a text file into the notebook
 
     node     -- node to attach folder to
-    filename -- filename of folder to import
+    filename -- filename of text file to import
     task     -- Task object to track progress
     """
 
-    # TODO: Exceptions, intelligent error handling
-    # For windows: 
-    # Deep paths are handled by unicode "\\?\" extension to filename.
-
     if task is None:
         # create dummy task if needed
-        task = tasklib.Task()    
-
-    # Determine number of files in advance so we can have a progress bar
-    nfiles = 0
-    nfilescomplete = 0 # updates progress bar
-    for root, dirs, files in os.walk(filename):
-        nfiles += len(files) # Add files found in current dir
-        task.set_message(("text", "Found %i files..." % nfiles))
-
-    # Make a node based on the root - so we have an origin to import to
-    rootnode = node.new_child(CONTENT_TYPE_DIR, os.path.basename(filename))
-    rootnode.set_attr("title", os.path.basename(filename))
-    filename2node = {filename: rootnode}
+        task = tasklib.Task()
     
-    # Walk directory we're importing and create nodes
-    for root, dirs, files in os.walk(filename):
-        
-        # create node for directory
-        if root == filename:
-            parent = rootnode
-        else:
-            parent2 = filename2node.get(os.path.dirname(root), None)
-            if parent2 is None:
-                continue
-            
-            parent = parent2.new_child(CONTENT_TYPE_DIR,
-                                       os.path.basename(root))
-            parent.set_attr("title", os.path.basename(root))
-            filename2node[root] = parent
 
-        
-        # create nodes for files
-        for fn in files:
-            if keepnote.get_platform() is "windows":
-                fn = "\\\\?\\" + os.path.join(root, fn)
-            else:
-                fn = os.path.join(root, fn)
-            child = attach_file(fn, parent)
-            
-            nfilescomplete += 1
-            task.set_message(("text", "Imported %i / %i files..." % 
-                              (nfilescomplete, nfiles)))
-            task.set_percent(float(nfilescomplete) / float(nfiles))
+    child = node.new_child(CONTENT_TYPE_PAGE, os.path.basename(filename), index)
+    child.set_attr("title", os.path.basename(filename)) # remove for 0.6.4
 
+    text = open(filename).read()
+    
+    out = safefile.open(child.get_data_file(), "w", codec="utf-8")
+    out.write(u"""<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"><body>""")
+
+    text = escape(text)
+    text = text.replace(u"\n", u"<br/>")
+    text = text.replace(u"\r", u"")
+
+    out.write(text)
+    out.write(u"</body></html>")
+
+    out.close()
     task.finish()
                      
         
