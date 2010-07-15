@@ -88,6 +88,7 @@ def unescape(text):
       return text # leave as is
    return re.sub("&#?\w+;", fixup, text)
 
+
 # http://diveintopython.org/html_processing/index.html
 class Extension (keepnote.gui.extension.Extension):
     version = (1, 0)
@@ -178,7 +179,7 @@ class Extension (keepnote.gui.extension.Extension):
 
     
 
-def import_ncd_file(window,file):
+def import_ncd_file(window, file):
     # is this really an .ncd file?
     counter = 10
     fd = open(file,r'r')
@@ -191,14 +192,16 @@ def import_ncd_file(window,file):
         counter -= 1
     fd.close()
     if ncd_identified == False:
-        dialog = gtk.MessageDialog(None, gtk.DIALOG_MODAL, gtk.MESSAGE_INFO, gtk.BUTTONS_OK,"Sorry, this is not a data file from the free version of NoteCase")
+        dialog = gtk.MessageDialog(
+           None, gtk.DIALOG_MODAL, gtk.MESSAGE_INFO, 
+           gtk.BUTTONS_OK,"Sorry, this is not a data file from the free version of NoteCase")
         dialog.run()
         dialog.destroy()
         return
 
    # create first node of the imported file
     pos = "sibling"
-    nodes, widget = window.get_selected_nodes("treeview")
+    nodes = window.get_selected_nodes()
     if len(nodes) == 1:
         parent = nodes[0]    
     else:
@@ -208,7 +211,8 @@ def import_ncd_file(window,file):
         parent = parent.get_parent()
     else:
         index = None
-    node = parent.new_child(notebooklib.CONTENT_TYPE_DIR,notebooklib.DEFAULT_DIR_NAME,index)
+    node = parent.new_child(notebooklib.CONTENT_TYPE_DIR,
+                            notebooklib.DEFAULT_DIR_NAME,index)
     node.rename(unicode(file.split(os.sep)[-1],'utf8'))
     
    # read in file at once

@@ -137,11 +137,15 @@ class Extension (extension.Extension):
             """)
 
 
-    def on_import_folder_tree(self, window, notebook, widget="focus"):
+    def on_import_folder_tree(self, window, notebook):
         """Callback from gui for importing a folder tree"""
         
-        if notebook is None:
+        # Ask the window for the currently selected nodes
+        nodes = window.get_selected_nodes()
+        if len(nodes) > 0:
             return
+        node = nodes[0]
+
 
         dialog = FileChooserDialog(
             "Attach Folder", window, 
@@ -154,27 +158,12 @@ class Extension (extension.Extension):
             filename = unicode_gtk(dialog.get_filename())
             dialog.destroy()
 
-            self.import_folder_tree(notebook, filename, 
-                                    window=window, widget=widget)
+            self.import_folder_tree(notde, filename, window=window)
         else:
             dialog.destroy()
 
 
-    def import_folder_tree(self, notebook, filename, 
-                           window=None, widget="focus"):
-        if notebook is None:
-            return
-
-        # Get the node we're going to attach to
-        if window is None:
-            # Can't get a node, so we add to the base node
-            node = notebook
-        else:
-            # Ask the window for the currently selected nodes
-            nodes, widget = window.get_selected_nodes()
-            # Use only the first
-            node = nodes[0]
-
+    def import_folder_tree(self, node, filename, window=None):
         try:
             import_folder(node, filename, task=None)
 
@@ -199,6 +188,7 @@ class Extension (extension.Extension):
             else:
                 self.app.error("unknown error", e, sys.exc_info()[2])
             return False
+
 
 
 def import_folder(node, filename, task=None):
@@ -246,7 +236,6 @@ def import_folder(node, filename, task=None):
         else:
             parent2 = filename2node.get(os.path.dirname(root), None)
             if parent2 is None:
-                keepnote.log_message("parent node not found '%s'.\n" % root)
                 continue
             
             parent = parent2.new_child(CONTENT_TYPE_DIR,
