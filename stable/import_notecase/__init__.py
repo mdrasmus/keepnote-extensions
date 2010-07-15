@@ -167,19 +167,15 @@ class Extension (keepnote.gui.extension.Extension):
         response = dialog.run()
         
         if response == gtk.RESPONSE_OK:
-            if dialog.get_current_folder():
-                self.app.pref.new_notebook_path = \
-                    os.path.dirname(dialog.get_current_folder())
-
             if dialog.get_filename():
                 ncd_file = dialog.get_filename()
                 if notebook is not None:
-                    import_ncd_file(window,ncd_file)
+                    import_ncd_file(window, ncd_file)
                 else:
                     print "WARNING: you need an notebook before you can import"
             # self.close_notebook()
         dialog.destroy()
-        pass
+
     
 
 def import_ncd_file(window,file):

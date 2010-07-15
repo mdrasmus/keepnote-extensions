@@ -60,7 +60,7 @@ from keepnote.notebook import NoteBookError, get_valid_unique_filename,\
     CONTENT_TYPE_DIR, attach_file
 from keepnote import notebook as notebooklib
 from keepnote import tasklib
-from keepnote.gui import extension
+from keepnote.gui import extension, FileChooserDialog
 
 # pygtk imports
 try:
@@ -101,7 +101,6 @@ class Extension (extension.Extension):
     def on_add_ui(self, window):
         """Initialize extension for a particular window"""
         
-        # TODO: ACTION GROUP MUST BE PER WINDOW
         # add menu options
         self._action_groups[window] = gtk.ActionGroup("MainWindow")
         self._action_groups[window].add_actions([
@@ -144,24 +143,25 @@ class Extension (extension.Extension):
         if notebook is None:
             return
 
-        dialog = gtk.FileChooserDialog("Attach Folder", window, 
+        dialog = FileChooserDialog(
+            "Attach Folder", window, 
             action=gtk.FILE_CHOOSER_ACTION_SELECT_FOLDER,
             buttons=("Cancel", gtk.RESPONSE_CANCEL,
-                     "Attach Folder", gtk.RESPONSE_OK))
-        
+                     "Attach Folder", gtk.RESPONSE_OK))        
         response = dialog.run()
 
         if response == gtk.RESPONSE_OK and dialog.get_filename():
             filename = unicode_gtk(dialog.get_filename())
-            
             dialog.destroy()
 
-            self.import_folder_tree(notebook, filename, window=window, widget=widget)
+            self.import_folder_tree(notebook, filename, 
+                                    window=window, widget=widget)
         else:
             dialog.destroy()
 
 
-    def import_folder_tree(self, notebook, filename, window=None, widget="focus"):
+    def import_folder_tree(self, notebook, filename, 
+                           window=None, widget="focus"):
         if notebook is None:
             return
 
@@ -171,7 +171,7 @@ class Extension (extension.Extension):
             node = notebook
         else:
             # Ask the window for the currently selected nodes
-            nodes, widget = window.get_selected_nodes(widget)
+            nodes, widget = window.get_selected_nodes()
             # Use only the first
             node = nodes[0]
 
