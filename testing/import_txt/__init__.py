@@ -131,21 +131,23 @@ class Extension (extension.Extension):
         
         # Ask the window for the currently selected nodes
         nodes = window.get_selected_nodes()
-        if len(nodes) > 0:
+        if len(nodes) == 0:
             return
         node = nodes[0]
+        if isinstance(node, list):
+            node = node[0] # remove for keepnote 0.6.4
 
 
         dialog = FileChooserDialog(
             "Import Plain Text", window, 
-            action=gtk.FILE_CHOOSER_ACTION_SELECT_FOLDER,
+            action=gtk.FILE_CHOOSER_ACTION_OPEN,
             buttons=("Cancel", gtk.RESPONSE_CANCEL,
                      "Import", gtk.RESPONSE_OK))
         dialog.set_select_multiple(True)
         response = dialog.run()
 
         if response == gtk.RESPONSE_OK and dialog.get_filenames():
-            filenames = map(unicode_gtk, dialog.get_filename())
+            filenames = map(unicode_gtk, dialog.get_filenames())
             dialog.destroy()
 
             self.import_plain_text(node, filenames, window=window)
@@ -153,7 +155,7 @@ class Extension (extension.Extension):
             dialog.destroy()
 
 
-    def import_folder_tree(self, node, filenames, window=None):
+    def import_plain_text(self, node, filenames, window=None):
         try:
             for filename in filenames:
                 import_txt(node, filename, task=None)
@@ -191,12 +193,15 @@ def import_txt(node, filename, index=None, task=None):
     task     -- Task object to track progress
     """
 
+    # TODO: handle spaces correctly
+
     if task is None:
         # create dummy task if needed
         task = tasklib.Task()
     
 
-    child = node.new_child(CONTENT_TYPE_PAGE, os.path.basename(filename), index)
+    child = node.new_child(notebooklib.CONTENT_TYPE_PAGE, 
+                           os.path.basename(filename), index)
     child.set_attr("title", os.path.basename(filename)) # remove for 0.6.4
 
     text = open(filename).read()
