@@ -136,6 +136,16 @@ class Extension (extension.Extension):
             </ui>
             """)
 
+    def on_remove_ui(self, window):        
+
+        # remove option
+        window.get_uimanager().remove_action_group(self._action_groups[window])
+        del self._action_groups[window]
+        
+        window.get_uimanager().remove_ui(self._ui_id[window])
+        del self._ui_id[window]
+
+
 
     def on_import_folder_tree(self, window, notebook, widget="focus"):
         """Callback from gui for importing a folder tree"""

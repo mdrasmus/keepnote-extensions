@@ -125,6 +125,16 @@ class Extension (extension.Extension):
             </ui>
             """)
 
+    def on_remove_ui(self, window):
+
+        # remove option
+        window.get_uimanager().remove_action_group(self._action_groups[window])
+        del self._action_groups[window]
+        
+        window.get_uimanager().remove_ui(self._ui_id[window])
+        del self._ui_id[window]
+
+
 
     def on_import_txt(self, window, notebook):
         """Callback from gui for importing a plain text file"""
