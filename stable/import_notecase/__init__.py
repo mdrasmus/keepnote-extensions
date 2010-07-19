@@ -102,20 +102,22 @@ class Extension (keepnote.gui.extension.Extension):
         
         keepnote.gui.extension.Extension.__init__(self, app)
         self.app = app
+        self._action_groups = {}
         self._ui_id = {}
 
 
     def on_add_ui(self, window):
         """Initialize extension for a particular window"""
             
-        self.action_group = gtk.ActionGroup("MainWindow")
-        self.action_group.add_actions([
+        self._action_groups[window] = gtk.ActionGroup("MainWindow")
+        self._action_groups.add_actions([
             ("Import ncd", None, "Import from .ncd file NoteCase 1.9.8",
              "", None,
              lambda w: self.on_import_ncd(window,
                                           window.get_notebook())),
             ])
-        window.get_uimanager().insert_action_group(self.action_group, 0)
+        window.get_uimanager().insert_action_group(
+           self._action_groups[window], 0)
         
         self._ui_id[window] = window.get_uimanager().add_ui_from_string(
             """
@@ -130,12 +132,11 @@ class Extension (keepnote.gui.extension.Extension):
             </ui>
             """)
 
-            
     def on_remove_ui(self, window):        
 
         # remove option
-        window.get_uimanager().remove_action_group(self.action_group)
-        self.action_group = None
+        window.get_uimanager().remove_action_group(self._action_groups[window])
+        del self._action_groups[window]
         
         window.get_uimanager().remove_ui(self._ui_id[window])
         del self._ui_id[window]
