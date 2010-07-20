@@ -4,13 +4,13 @@
     Import plain text files extension
 
 """
-from keepnote.timestamp import get_timestamp
 
 #
 #  KeepNote
-#  Copyright (c) 2008-2009 Matt Rasmussen
+#  Copyright (c) 2008-2010 Matt Rasmussen
 #  Author: Matt Rasmussen <rasmus@mit.edu>
 #  import_folder extension by: Will Rouesnel <electricitylikesme@hotmail.com>
+#                              Matt Rasmussen <rasmus@mit.edu>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -33,13 +33,7 @@ import gettext
 import mimetypes
 import os
 import sys
-import time
-import shutil
-import urllib
-import urlparse
-import urllib2
-import xml.dom
-from xml.dom import minidom
+import re
 from xml.sax.saxutils import escape
 
 
@@ -214,13 +208,16 @@ def import_txt(node, filename, index=None, task=None):
                            os.path.basename(filename), index)
     child.set_attr("title", os.path.basename(filename)) # remove for 0.6.4
 
-    text = open(filename).read()
+    lines = open(filename).readlines()
     
     out = safefile.open(child.get_data_file(), "w", codec="utf-8")
     out.write(u"""<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml"><body>""")
 
-    text = escape(text)
+    lines = [escape_whitespace(escape(line)) for line in lines]
+    text = "".join(lines)
+
+    # replace newlines
     text = text.replace(u"\n", u"<br/>")
     text = text.replace(u"\r", u"")
 
@@ -230,4 +227,47 @@ def import_txt(node, filename, index=None, task=None):
     out.close()
     task.finish()
                      
+
+def escape_whitespace(line):
+    """Escape white space for an HTML line"""
+
+    line2 = []
+    it = iter(line)
+
+    # replace leading spaces
+    for c in it:
+        if c == " ":
+            line2.append("&nbsp;")
+        else:
+            line2.append(c)
+            break
+
+    # replace multi-spaces
+    for c in it:
+        if c == " ":
+            line2.append(" ")
+            for c in it:
+                if c == " ":
+                    line2.append("&nbsp;")
+                else:
+                    line2.append(c)
+                    break
+        else:
+            line2.append(c)
+
+    return "".join(line2)
+    
+
+
+if __name__ == "__main__":
+    
+    text = ("  hello\n" 
+            "there & hi a  word here    \n"
+            "  ab  wer   123\n").split("\n")
+
+
+    for line in text:
+        line = escape(line)
+        line = escape_whitespace(line)
         
+        print line
