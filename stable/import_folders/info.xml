@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<extension>
+  <dict>
+    <key>version</key>
+    <string>0.2</string>
+    <key>name</key>
+    <string>Import Folder Tree</string>
+    <key>author</key>
+    <string>Will Rouesnel</string>
+    <key>email</key>
+    <string>electricitylikesme@hotmail.com</string>
+    <key>website</key>
+    <string>http://rasm.ods.org/keepnote/extensions.shtml</string>
+    <key>description</key>
+    <string>Imports a folder tree as nodes in a notebook</string>
+  </dict>
+</extension>

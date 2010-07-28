@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<extension>
+  <dict>
+    <key>version</key>
+    <string>1.0</string>
+    <key>name</key>
+    <string>Import Basket</string>
+    <key>author</key>
+    <string>Corrado</string>
+    <key>website</key>
+    <string>http://rasm.ods.org/keepnote/extensions.shtml</string>
+    <key>description</key>
+    <string>Primitive import of Basket Notepad Databases.</string>
+  </dict>
+</extension>
