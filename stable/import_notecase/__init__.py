@@ -108,7 +108,7 @@ class Extension (keepnote.gui.extension.Extension):
         """Initialize extension for a particular window"""
             
         self._action_groups[window] = gtk.ActionGroup("MainWindow")
-        self._action_groups.add_actions([
+        self._action_groups[window].add_actions([
             ("Import ncd", None, "Import from .ncd file NoteCase 1.9.8",
              "", None,
              lambda w: self.on_import_ncd(window,
