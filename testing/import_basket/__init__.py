@@ -192,8 +192,9 @@ def import_basket_directory(window, basket_directory):
     basket_xml_file = basket_directory + os.sep + "baskets.xml"
     try:
         fd = open(basket_xml_file, r'r')
-    except IOError as (errno, strerror):
-        print "I/O error({0}): {1}".format(errno, strerror)
+    except IOError, e:
+        errno, strerror = e
+        print "I/O error(%s): %s" % (errno, strerror)
         dialog = gtk.MessageDialog(None, gtk.DIALOG_MODAL, gtk.MESSAGE_INFO, gtk.BUTTONS_OK, "Sorry, this is not a data directory of Basket Notepad, baskets.xml not found!")
         dialog.run()
         dialog.destroy()
