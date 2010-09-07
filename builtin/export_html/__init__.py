@@ -48,7 +48,7 @@ from keepnote.notebook import NoteBookError, get_valid_unique_filename
 from keepnote import notebook as notebooklib
 from keepnote import tasklib
 from keepnote import tarfile
-from keepnote.gui import extension
+from keepnote.gui import extension, FileChooserDialog
 
 # pygtk imports
 try:
@@ -83,13 +83,12 @@ class Extension (extension.Extension):
 
 
     def get_depends(self):
-        return [("keepnote", ">=", (0, 6, 1))]
+        return [("keepnote", ">=", (0, 6, 4))]
 
 
     def on_add_ui(self, window):
         """Initialize extension for a particular window"""
-
-        # TODO: ACTION GROUP MUST BE PER WINDOW
+        
         # add menu options
         self._action_groups[window] = gtk.ActionGroup("MainWindow")
         self._action_groups[window].add_actions([
@@ -130,38 +129,30 @@ class Extension (extension.Extension):
         if notebook is None:
             return
 
-        dialog = gtk.FileChooserDialog("Export Notebook", window, 
+        dialog = FileChooserDialog("Export Notebook", window, 
             action=gtk.FILE_CHOOSER_ACTION_SAVE,
             buttons=("Cancel", gtk.RESPONSE_CANCEL,
-                     "Export", gtk.RESPONSE_OK))
+                     "Export", gtk.RESPONSE_OK),
+            app=self.app,
+            persistent_path="archive_notebook_path")
 
 
         basename = time.strftime(os.path.basename(notebook.get_path()) +
                                  "-%Y-%m-%d")
 
-        if os.path.exists(self.app.pref.archive_notebook_path):            
+        path = self.app.get_default_path("archive_notebook_path")
+        if path and os.path.exists(path):
             filename = notebooklib.get_unique_filename(
-                self.app.pref.archive_notebook_path,
-                basename, "", ".")
+                path, basename, "", ".")
         else:
             filename = basename
         dialog.set_current_name(os.path.basename(filename))
-        if os.path.exists(self.app.pref.archive_notebook_path):
-            dialog.set_current_folder(self.app.pref.archive_notebook_path)
         
         response = dialog.run()
 
         if response == gtk.RESPONSE_OK and dialog.get_filename():
             filename = unicode_gtk(dialog.get_filename())
-            
-            if dialog.get_current_folder():
-                self.app.pref.archive_notebook_path = \
-                    keepnote.unicode_gtk(dialog.get_current_folder())
-                self.app.pref.changed.notify()
-
-
             dialog.destroy()
-
             self.export_notebook(notebook, filename, window=window)
         else:
             dialog.destroy()
