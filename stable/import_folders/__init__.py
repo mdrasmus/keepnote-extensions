@@ -107,7 +107,7 @@ class Extension (extension.Extension):
             ("Import Folder", gtk.STOCK_ADD, "_Attach Folder...",
              "", _("Attach a folder and its contents to the notebook"),
              lambda w: self.on_import_folder_tree(window,
-                                               window.get_notebook())),
+                                                  window.get_notebook())),
             ])
         window.get_uimanager().insert_action_group(
             self._action_groups[window], 0)
@@ -149,10 +149,11 @@ class Extension (extension.Extension):
 
     def on_import_folder_tree(self, window, notebook):
         """Callback from gui for importing a folder tree"""
-        
+
         # Ask the window for the currently selected nodes
         nodes = window.get_selected_nodes()
-        if len(nodes) > 0:
+        print nodes
+        if len(nodes) == 0:
             return
         node = nodes[0]
 

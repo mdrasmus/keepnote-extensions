@@ -173,7 +173,7 @@ class Extension (extension.Extension):
             node = notebook
         else:
             # Ask the window for the currently selected nodes
-            nodes, widget = window.get_selected_nodes()
+            nodes = window.get_selected_nodes()
             # Use only the first
             node = nodes[0]
 

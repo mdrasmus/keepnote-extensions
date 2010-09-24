@@ -216,7 +216,7 @@ def import_basket_directory(window, basket_directory):
 
    # create first node of the imported file
     pos = "sibling"
-    nodes, widget = window.get_selected_nodes("treeview")
+    nodes = window.get_selected_nodes()
     if len(nodes) == 1:
         parent = nodes[0]    
     else:
