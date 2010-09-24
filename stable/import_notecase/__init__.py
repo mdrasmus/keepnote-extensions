@@ -6,8 +6,10 @@
 """
 #
 #  KeepNote
-#  Copyright (c) 2008-2009 Matt Rasmussen
-#  Author: Nihil <nihil@blue.dyn-o-saur.com>,Matt Rasmussen <rasmus@mit.edu>
+#  Copyright (c) 2008-2010 Matt Rasmussen
+#  Author: Matt Rasmussen <rasmus@mit.edu>
+#  Extension by: Nihil <nihil@blue.dyn-o-saur.com>,
+#                Matt Rasmussen <rasmus@mit.edu>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,24 +24,21 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 #
-# CHANGELOG
-# 12 Nov 2009
-# Version 0.0.1 initial release
 
 
+# python imports
+import sgmllib
+import htmlentitydefs,re
+import base64
+import string,random
 
+# keepnote imports
 import keepnote
 import keepnote.gui.extension
 from keepnote import notebook as notebooklib
 import os,gtk
 import pygtk
 pygtk.require('2.0')
-
-#from xml.dom.ext.reader import HtmlLib
-import sgmllib
-import htmlentitydefs,re
-import base64
-import string,random
 
 # unescape html entities
 # stolen form

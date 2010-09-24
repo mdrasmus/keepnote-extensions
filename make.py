@@ -3,7 +3,7 @@
 
 
 import os
-from subprocess import call
+from subprocess import call, Popen, PIPE
 
 def make_ext(base, folder):
     ext = folder + ".kne"
@@ -17,7 +17,19 @@ def make_ext(base, folder):
     os.chdir(olddir)
 
 
+def clear_pyc(base):
+    for root, dirs, files in os.walk(base):
+        for fn in files:
+            if fn.endswith(".pyc"):
+                full = os.path.join(root, fn)
+                print "remove", full
+                os.remove(full)
+    
+
+
 def make_ext_set(base):
+    clear_pyc(base)
+
     for ext in os.listdir(base):
         if os.path.isdir(os.path.join(base, ext)):
             print "make", ext

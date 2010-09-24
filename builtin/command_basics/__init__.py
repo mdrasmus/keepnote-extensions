@@ -29,14 +29,18 @@
 import os
 import sys
 
+# gtk imports
+import gobject
+
 # keepnote imports
 import keepnote
 from keepnote import AppCommand
 import keepnote.notebook
-from keepnote.gui import extension
+import keepnote.extension
+import keepnote.gui.extension
 
 
-class Extension (extension.Extension):
+class Extension (keepnote.gui.extension.Extension):
     
     version = (1, 0)
     name = "Basic Commands"
@@ -47,7 +51,7 @@ class Extension (extension.Extension):
     def __init__(self, app):
         """Initialize extension"""
         
-        extension.Extension.__init__(self, app)
+        keepnote.gui.extension.Extension.__init__(self, app)
         self.app = app
         self.enabled.add(self.on_enabled)
 
@@ -62,7 +66,14 @@ class Extension (extension.Extension):
             AppCommand("uninstall", self.on_uninstall_extension,
                        metavar="EXTENSION_NAME",
                        help="uninstall an extension"),
-            AppCommand("quit", lambda app, args: app.quit(),
+            AppCommand("tmp_ext", self.on_temp_extension,
+                       metavar="FILENAME",
+                       help="add an extension just for this session"),
+            AppCommand("ext_path", self.on_extension_path,
+                       metavar="PATH",
+                       help="add an extension path for this session"),
+            AppCommand("quit", lambda app, args: 
+                       gobject.idle_add(app.quit),
                        help="close all KeepNote windows"),
 
             AppCommand("view", self.on_view_note,
@@ -76,7 +87,7 @@ class Extension (extension.Extension):
 
 
     def get_depends(self):
-        return [("keepnote", ">=", (0, 6, 2))]
+        return [("keepnote", ">=", (0, 6, 4))]
 
 
     def on_enabled(self, enabled):
@@ -103,17 +114,38 @@ class Extension (extension.Extension):
     def on_uninstall_extension(self, app, args):
         
         for extname in args[1:]:
-            ext = app.get_extension(extname)
-            if ext is None:
-                app.error("unknown extension '%s'" % extname)
-            else:
-                app.uninstall_extension(ext)
+            app.uninstall_extension(extname)
 
 
     def on_install_extension(self, app, args):
         
         for filename in args[1:]:
             app.install_extension(filename)
+
+            
+    def on_temp_extension(self, app, args):
+
+        for filename in args[1:]:
+            entry = app.add_extension_entry(filename, "temp")
+            ext = app.get_extension(entry.get_key())
+            if ext:
+                app.init_extensions_windows(windows=None, exts=[ext])
+                ext.enable(True)
+            
+
+    def on_extension_path(self, app, args):
+
+        exts = []
+        for extensions_dir in args[1:]:
+            for filename in keepnote.extension.iter_extensions(extensions_dir):
+                entry = app.add_extension_entry(filename, "temp")
+                ext = app.get_extension(entry.get_key())
+                if ext:
+                    exts.append(ext)
+
+        app.init_extensions_windows(windows=None, exts=exts)
+        for ext in exts:
+            ext.enable(True)
 
 
     def on_screenshot(self, app, args):

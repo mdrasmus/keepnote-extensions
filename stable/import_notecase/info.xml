@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<extension>
+  <dict>
+    <key>version</key>
+    <string>1.0</string>
+    <key>name</key>
+    <string>Import NoteCase</string>
+    <key>author</key>
+    <string>Nihil</string>
+    <key>email</key>
+    <string>nihil@blue.dyn-o-saur.com</string>
+    <key>website</key>
+    <string>http://rasm.ods.org/keepnote/extensions.shtml</string>
+    <key>description</key>
+    <string>Primitive import of NoteCase .ncd Files</string>
+  </dict>
+</extension>
