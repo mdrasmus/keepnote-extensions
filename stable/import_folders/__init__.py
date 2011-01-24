@@ -101,7 +101,7 @@ class Extension (extension.Extension):
             ("Import Folder", gtk.STOCK_ADD, "_Attach Folder...",
              "", _("Attach a folder and its contents to the notebook"),
              lambda w: self.on_import_folder_tree(window,
-                                               window.get_notebook())),
+                                                  window.get_notebook())),
             ])
         window.get_uimanager().insert_action_group(
             self._action_groups[window], 0)
@@ -141,11 +141,16 @@ class Extension (extension.Extension):
 
 
 
-    def on_import_folder_tree(self, window, notebook, widget="focus"):
+    def on_import_folder_tree(self, window, notebook):
         """Callback from gui for importing a folder tree"""
-        
-        if notebook is None:
+
+        # Ask the window for the currently selected nodes
+        nodes = window.get_selected_nodes()
+        print nodes
+        if len(nodes) == 0:
             return
+        node = nodes[0]
+
 
         dialog = FileChooserDialog(
             "Attach Folder", window, 
@@ -158,27 +163,12 @@ class Extension (extension.Extension):
             filename = unicode_gtk(dialog.get_filename())
             dialog.destroy()
 
-            self.import_folder_tree(notebook, filename, 
-                                    window=window, widget=widget)
+            self.import_folder_tree(node, filename, window=window)
         else:
             dialog.destroy()
 
 
-    def import_folder_tree(self, notebook, filename, 
-                           window=None, widget="focus"):
-        if notebook is None:
-            return
-
-        # Get the node we're going to attach to
-        if window is None:
-            # Can't get a node, so we add to the base node
-            node = notebook
-        else:
-            # Ask the window for the currently selected nodes
-            nodes, widget = window.get_selected_nodes()
-            # Use only the first
-            node = nodes[0]
-
+    def import_folder_tree(self, node, filename, window=None):
         try:
             import_folder(node, filename, task=None)
 
@@ -205,6 +195,7 @@ class Extension (extension.Extension):
             return False
 
 
+
 def import_folder(node, filename, task=None):
     """
     Import a folder tree as a subfolder of the current item
@@ -218,29 +209,22 @@ def import_folder(node, filename, task=None):
     # For windows: 
     # Deep paths are handled by unicode "\\?\" extension to filename.
 
-
     if task is None:
         # create dummy task if needed
-        task = tasklib.Task()
-    
+        task = tasklib.Task()    
 
     # Determine number of files in advance so we can have a progress bar
     nfiles = 0
+    nfilescomplete = 0 # updates progress bar
     for root, dirs, files in os.walk(filename):
         nfiles += len(files) # Add files found in current dir
         task.set_message(("text", "Found %i files..." % nfiles))
-
 
     # Make a node based on the root - so we have an origin to import to
     rootnode = node.new_child(CONTENT_TYPE_DIR, os.path.basename(filename))
     rootnode.set_attr("title", os.path.basename(filename))
     filename2node = {filename: rootnode}
     
-
-
-    nfilescomplete = 0 # updates progress bar
-
-
     # Walk directory we're importing and create nodes
     for root, dirs, files in os.walk(filename):
         
@@ -250,7 +234,6 @@ def import_folder(node, filename, task=None):
         else:
             parent2 = filename2node.get(os.path.dirname(root), None)
             if parent2 is None:
-                keepnote.log_message("parent node not found '%s'.\n" % root)
                 continue
             
             parent = parent2.new_child(CONTENT_TYPE_DIR,

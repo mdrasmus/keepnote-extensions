@@ -79,7 +79,7 @@ except ImportError:
 
 
 class Extension (extension.Extension):
-
+    
     def __init__(self, app):
         """Initialize extension"""
         

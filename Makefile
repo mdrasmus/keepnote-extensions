@@ -9,5 +9,5 @@ KEEPNOTE=../keepnote-dev/
 cpbuiltin:
 	rm -rf builtin
 	mkdir -p builtin
-	cp -r $(KEEPNOTE)/extensions/* builtin/
+	cp -r $(KEEPNOTE)/keepnote/extensions/* builtin/
 
