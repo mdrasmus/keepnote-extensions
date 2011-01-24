@@ -44,7 +44,7 @@ _ = gettext.gettext
 # keepnote imports
 import keepnote
 from keepnote import unicode_gtk
-from keepnote.notebook import NoteBookError, get_valid_unique_filename
+from keepnote.notebook import NoteBookError
 from keepnote import notebook as notebooklib
 from keepnote import tasklib
 from keepnote import tarfile
@@ -66,12 +66,6 @@ except ImportError:
 
 class Extension (extension.Extension):
     
-    version = (1, 0)
-    name = "Export HTML"
-    author = "Matt Rasmussen <rasmus@mit.edu>"
-    description = "Exports a notebook to HTML format"
-
-
     def __init__(self, app):
         """Initialize extension"""
         

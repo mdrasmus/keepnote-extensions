@@ -89,11 +89,6 @@ def unescape(text):
 
 # http://diveintopython.org/html_processing/index.html
 class Extension (keepnote.gui.extension.Extension):
-    version = (1, 0)
-    name = "Import NoteCase"
-    author = "Nihil <nihil@blue.dyn-o-saur.com>"
-    website = "http://rasm.ods.org/keepnote/extensions.shtml"
-    description = "Primitive import of .ncd Files."
 
     def __init__(self, app):
         """Initialize extension"""

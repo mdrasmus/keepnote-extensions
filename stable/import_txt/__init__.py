@@ -71,12 +71,6 @@ except ImportError:
 
 
 class Extension (extension.Extension):
-    
-    version = (0, 2)
-    name = "Import Plain Text"
-    author = "Matt Rasmussen <rasmus@mit.edu>"
-    description = "Imports plain text files as nodes in a notebook"
-
 
     def __init__(self, app):
         """Initialize extension"""

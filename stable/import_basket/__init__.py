@@ -123,11 +123,6 @@ def unescape(text):
 
 # http://diveintopython.org/html_processing/index.html
 class Extension (keepnote.gui.extension.Extension):
-    version = (1, 0)
-    name = "Import Basket"
-    author = "Corrado"
-    website = "http://www.gmail.com"
-    description = "Primitive import of Basket Notepad Databases."
 
     def __init__(self, app):
         """Initialize extension"""

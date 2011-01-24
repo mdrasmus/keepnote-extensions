@@ -1,7 +1,7 @@
 """
 
     KeepNote
-    Import folder structure extension
+    Generate Catalog of Files
 
 """
 from keepnote.timestamp import get_timestamp
@@ -30,6 +30,7 @@ from keepnote.timestamp import get_timestamp
 # python imports
 import codecs
 import gettext
+import locale
 import mimetypes
 import os
 import sys
@@ -57,9 +58,10 @@ import gobject
 import keepnote
 from keepnote import unicode_gtk
 from keepnote.notebook import NoteBookError, get_valid_unique_filename,\
-    CONTENT_TYPE_DIR, attach_file
+    CONTENT_TYPE_PAGE, CONTENT_TYPE_DIR
+# attach_file
 from keepnote import notebook as notebooklib
-from keepnote import tasklib
+from keepnote import tasklib, safefile 
 from keepnote.gui import extension, FileChooserDialog
 
 # pygtk imports
@@ -98,9 +100,9 @@ class Extension (extension.Extension):
         # add menu options
         self._action_groups[window] = gtk.ActionGroup("MainWindow")
         self._action_groups[window].add_actions([
-            ("Import Folder", gtk.STOCK_ADD, "_Attach Folder...",
-             "", _("Attach a folder and its contents to the notebook"),
-             lambda w: self.on_import_folder_tree(window,
+            ("Make Catalog", gtk.STOCK_ADD, "_Make Catalog...",
+             "", _("Make a catalog of files"),
+             lambda w: self.on_make_catalog(window,
                                                window.get_notebook())),
             ])
         window.get_uimanager().insert_action_group(
@@ -113,58 +115,48 @@ class Extension (extension.Extension):
             <menubar name="main_menu_bar">
                <menu action="Edit">
                  <placeholder name="Viewer">
-                     <menuitem action="Import Folder"/>
+                     <menuitem action="Make Catalog"/>
                  </placeholder>
                </menu>
             </menubar>
             
             <menubar name="popup_menus">
                 <menu action="treeview_popup">
-                    <menuitem action="Import Folder"/>
+                    <menuitem action="Make Catalog"/>
                 </menu>
             
                 <menu action="listview_popup">
-                    <menuitem action="Import Folder"/>
+                    <menuitem action="Make Catalog"/>
                 </menu>
             </menubar>
             </ui>
             """)
 
-    def on_remove_ui(self, window):        
 
-        # remove option
-        window.get_uimanager().remove_action_group(self._action_groups[window])
-        del self._action_groups[window]
-        
-        window.get_uimanager().remove_ui(self._ui_id[window])
-        del self._ui_id[window]
-
-
-
-    def on_import_folder_tree(self, window, notebook, widget="focus"):
-        """Callback from gui for importing a folder tree"""
+    def on_make_catalog(self, window, notebook, widget="focus"):
+        """Callback from gui for making a catalog tree"""
         
         if notebook is None:
             return
 
         dialog = FileChooserDialog(
-            "Attach Folder", window, 
+            "Make Catalog", window, 
             action=gtk.FILE_CHOOSER_ACTION_SELECT_FOLDER,
             buttons=("Cancel", gtk.RESPONSE_CANCEL,
-                     "Attach Folder", gtk.RESPONSE_OK))        
+                     "Make Catalog", gtk.RESPONSE_OK))        
         response = dialog.run()
 
         if response == gtk.RESPONSE_OK and dialog.get_filename():
             filename = unicode_gtk(dialog.get_filename())
             dialog.destroy()
 
-            self.import_folder_tree(notebook, filename, 
+            self.make_catalog(notebook, filename, 
                                     window=window, widget=widget)
         else:
             dialog.destroy()
 
 
-    def import_folder_tree(self, notebook, filename, 
+    def make_catalog(self, notebook, filename, 
                            window=None, widget="focus"):
         if notebook is None:
             return
@@ -175,24 +167,24 @@ class Extension (extension.Extension):
             node = notebook
         else:
             # Ask the window for the currently selected nodes
-            nodes, widget = window.get_selected_nodes()
+            nodes = window.get_selected_nodes()
             # Use only the first
             node = nodes[0]
 
         try:
-            import_folder(node, filename, task=None)
+            generate_catalog_folders(node, filename, task=None)
 
             if window:
-                window.set_status("Folder imported.")
+                window.set_status("Catalog Made")
             return True
     
         except NoteBookError:
             if window:
                 window.set_status("")
-                window.error("Error while importing folder.", 
+                window.error("Error while making catalog.", 
                              e, sys.exc_info()[2])
             else:
-                self.app.error("Error while importing folder.", 
+                self.app.error("Error while making catalog.", 
                                e, sys.exc_info()[2])
             return False
 
@@ -205,7 +197,7 @@ class Extension (extension.Extension):
             return False
 
 
-def import_folder(node, filename, task=None):
+def generate_catalog_folders(node, filename, task=None):
     """
     Import a folder tree as a subfolder of the current item
 
@@ -232,7 +224,7 @@ def import_folder(node, filename, task=None):
 
 
     # Make a node based on the root - so we have an origin to import to
-    rootnode = node.new_child(CONTENT_TYPE_DIR, os.path.basename(filename))
+    rootnode = node.new_child(CONTENT_TYPE_PAGE, os.path.basename(filename))
     rootnode.set_attr("title", os.path.basename(filename))
     filename2node = {filename: rootnode}
     
@@ -253,25 +245,86 @@ def import_folder(node, filename, task=None):
                 keepnote.log_message("parent node not found '%s'.\n" % root)
                 continue
             
-            parent = parent2.new_child(CONTENT_TYPE_DIR,
+            parent = parent2.new_child(CONTENT_TYPE_PAGE,
                                        os.path.basename(root))
             parent.set_attr("title", os.path.basename(root))
             filename2node[root] = parent
 
         
         # create nodes for files
-        for fn in files:
-            if keepnote.get_platform() is "windows":
-                fn = "\\\\?\\" + os.path.join(root, fn)
-            else:
-                fn = os.path.join(root, fn)
-            child = attach_file(fn, parent)
-            
+        fileList = "" ;
+        for shortName in files:
+            #if keepnote.get_platform() is "windows":
+            #    fn = "\\\\?\\" + os.path.join(root, fn)
+            #else:
+            #    fn = os.path.join(root, fn)
+
+            #child = attach_file(fn, parent)
+            fn = os.path.join(root,shortName)
+            fileSize = os.stat(fn).st_size
+            #fileTime = time.asctime(time.localtime(os.stat(fn).st_mtime))
+            ft = time.localtime(os.stat(fn).st_mtime)
+            fileLine = '<a href="%s">%s</a> %s %02d-%02d-%02d %02d:%02d:%02d ' % (fn,shortName,formatFileSize(fileSize),ft.tm_year,ft.tm_mon,ft.tm_mday,ft.tm_hour,ft.tm_min,ft.tm_sec)
+
+            fileList += fileLine + "\n"  # Will be converted to <br> when page inserted
             nfilescomplete += 1
             task.set_message(("text", "Imported %i / %i files..." % 
                               (nfilescomplete, nfiles)))
             task.set_percent(float(nfilescomplete) / float(nfiles))
 
+        make_catalog_page(parent,fileList,task)
+
     task.finish()
                      
-        
+
+
+def make_catalog_page(child,text,task) :
+        #node, filename, index=None, task=None):
+    """
+    Insert a listing of files into current page
+
+    child     -- write into this node
+    text -- formatted listing of files or content to insert into page
+    task     -- Task object to track progress
+
+    filename -- filename of text file to import
+    """
+
+    # TODO: handle spaces correctly
+
+    if task is None:
+        # create dummy task if needed
+        task = tasklib.Task()
+    
+
+    #child = node.new_child(notebooklib.CONTENT_TYPE_PAGE, os.path.basename(filename), index)
+    #child.set_attr("title", os.path.basename(filename)) # remove for 0.6.4
+
+    #text = open(filename).read()
+    
+    out = safefile.open(child.get_data_file(), "w", codec="utf-8")
+    out.write(u"""<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"><body>""")
+
+    #text = escape(text)
+    text = text.replace(u"\n", u"<br/>")
+    text = text.replace(u"\r", u"")
+
+    out.write(text)
+    out.write(u"</body></html>")
+
+    out.close()
+    task.finish()      
+
+
+def formatFileSize(fileSize) :
+    locale.setlocale(locale.LC_ALL, "")
+    sizes = (3,2,1,0)
+    sufs = ('gb','mb','kb','b')
+    for bracket in sizes :
+        #print "%d %d %d" % (bracket,fileSize,pow(1024,bracket) )
+        if fileSize > pow(1024,bracket) or bracket==0 :
+            return locale.format('%d', fileSize // pow(1024,bracket), True) + sufs[3-bracket]
+
+
+

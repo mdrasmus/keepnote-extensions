@@ -38,12 +38,6 @@ from keepnote.gui import extension
 
 class Extension (extension.Extension):
     
-    version = (1, 0)
-    name = "Basic Commands"
-    author = "Matt Rasmussen <rasmus@mit.edu>"
-    description = "Adds basic command line options to KeepNote"
-
-
     def __init__(self, app):
         """Initialize extension"""
         
