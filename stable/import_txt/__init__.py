@@ -116,9 +116,6 @@ class Extension (extension.Extension):
         if len(nodes) == 0:
             return
         node = nodes[0]
-        if isinstance(node, list):
-            node = node[0] # remove for keepnote 0.6.4
-
 
         dialog = FileChooserDialog(
             "Import Plain Text", window, 

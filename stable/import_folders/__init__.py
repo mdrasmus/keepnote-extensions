@@ -84,30 +84,24 @@ class Extension (extension.Extension):
         extension.Extension.__init__(self, app)
         self.app = app
 
-        self._ui_id = {}
-        self._action_groups = {}
-
 
     def get_depends(self):
-        return [("keepnote", ">=", (0, 6, 3))]
+        return [("keepnote", ">=", (0, 7, 1))]
 
 
     def on_add_ui(self, window):
         """Initialize extension for a particular window"""
         
         # add menu options
-        self._action_groups[window] = gtk.ActionGroup("MainWindow")
-        self._action_groups[window].add_actions([
-            ("Import Folder", gtk.STOCK_ADD, "_Attach Folder...",
-             "", _("Attach a folder and its contents to the notebook"),
-             lambda w: self.on_import_folder_tree(window,
-                                                  window.get_notebook())),
-            ])
-        window.get_uimanager().insert_action_group(
-            self._action_groups[window], 0)
+        self.add_action(
+            window, "Import Folder", "_Attach Folder...",
+            lambda w: self.on_import_folder_tree(
+                window, window.get_notebook()),
+            tooltip=_("Attach a folder and its contents to the notebook"),
+            stock_id=gtk.STOCK_ADD)
         
         # TODO: Fix up the ordering on the affected menus.
-        self._ui_id[window] = window.get_uimanager().add_ui_from_string(
+        self.add_ui(window,
             """
             <ui>
             <menubar name="main_menu_bar">
@@ -130,23 +124,12 @@ class Extension (extension.Extension):
             </ui>
             """)
 
-    def on_remove_ui(self, window):        
-
-        # remove option
-        window.get_uimanager().remove_action_group(self._action_groups[window])
-        del self._action_groups[window]
-        
-        window.get_uimanager().remove_ui(self._ui_id[window])
-        del self._ui_id[window]
-
-
 
     def on_import_folder_tree(self, window, notebook):
         """Callback from gui for importing a folder tree"""
 
         # Ask the window for the currently selected nodes
         nodes = window.get_selected_nodes()
-        print nodes
         if len(nodes) == 0:
             return
         node = nodes[0]

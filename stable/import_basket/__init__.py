@@ -129,22 +129,20 @@ class Extension (keepnote.gui.extension.Extension):
         
         keepnote.gui.extension.Extension.__init__(self, app)
         self.app = app
-        self._ui_id = {}
+
+
+    def get_depends(self):
+        return [("keepnote", ">=", (0, 7, 1))]
 
 
     def on_add_ui(self, window):
         """Initialize extension for a particular window"""
             
-        self.action_group = gtk.ActionGroup("MainWindow")
-        self.action_group.add_actions([
-            ("Import BasketNotepad", None, "Import from Basket Directory",
-             "", None,
-             lambda w: self.on_import_basket(window,
-                                          window.get_notebook())),
-            ])
-        window.get_uimanager().insert_action_group(self.action_group, 0)
+        self.add_action(
+            window, "Import BasketNotepad", "Import from Basket Directory",
+            lambda w: self.on_import_basket(window, window.get_notebook()))
         
-        self._ui_id[window] = window.get_uimanager().add_ui_from_string(
+        self.add_ui(window,
             """
             <ui>
             <menubar name="main_menu_bar">
@@ -156,16 +154,6 @@ class Extension (keepnote.gui.extension.Extension):
             </menubar>
             </ui>
             """)
-
-            
-    def on_remove_ui(self, window):        
-
-        # remove option
-        window.get_uimanager().remove_action_group(self.action_group)
-        self.action_group = None
-        
-        window.get_uimanager().remove_ui(self._ui_id[window])
-        del self._ui_id[window]
 
 
     def on_import_basket(self, window, notebook):
