@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<extension>
+  <dict>
+    <key>version</key>
+    <string>0.2</string>
+    <key>name</key>
+    <string>Pasteboard</string>
+    <key>author</key>
+    <string>Mark Saliers</string>
+    <key>email</key>
+    <string>throaway@yahoo.com</string>
+    <key>website</key>
+    <string>http://rasm.ods.org/keepnote/extensions.shtml</string>
+    <key>description</key>
+    <string>Captures contents of system clipboard as text and images are copied 
+            from other applications. Suffers from same limitations as standard 
+            copy/paste routines do under Windows.</string>
+  </dict>
+</extension>
