@@ -27,52 +27,6 @@ from keepnote.timestamp import get_timestamp
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 #
 
-#debug = open("c:/Program Files/KeepNote/extensions/capture_clipboard/debug.txt","w")
-#debug.write("beginning log\n")
-# (query-replace-regexp "^\s*debug" "#debug" nil nil)
-class Pannier :
-  """
-  Pannier class
-  I would have like to make this a singleton, but Python
-  is too #!@$ clumsy to allow that.
-  PARMS: window, node, data (string), debug (file name)
-  MAS 2011-02-21
-  """
-  pannier = None # Calling program has to be smart enough to set this 
-  #data = "orig"
-  #stage = 0
-  def __init__(self,window,node,data) :
-      #debug.write("Inside init\n")
-      #Pannier.stage += 1
-      #Pannier.pannier = Pannier(window,node,data)
-      #elif Pannier.stage == 1 :
-      #debug.write("Inside stage 1\n")
-      #Pannier.stage += 1
-      #self.debug = open(debug,"w")
-      self.window = window
-      self.node = node
-      #if self.node is None :
-        #debug.write("Node passed seems to be none\n")
-      #else :
-        #debug.write("Node received seems to be NOT none\n")
-      self.data = data
-      #else :
-      #debug.write("Somehow in final stage of pannier creation!\n")
-      #self.debug = Pannier.pannier.debug
-      #self.window = Pannier.pannier.window
-      #self.node = Pannier.pannier.node
-      #self.data = Pannier.pannier.data
-      self.clipboard = gtk.clipboard_get(gtk.gdk.SELECTION_CLIPBOARD)
-      self.clipboard.set_text("")
-      self.counter = 0
-      self.last_text = "" # Keeps track of last text pulled from clipboard
-      self.paste_activated = False
-      self.textview = None
-      self.editor = None 
-  def inc(self) :
-    self.counter += 1
-    return self.counter
-
 
 # python imports
 import codecs
@@ -134,45 +88,30 @@ except ImportError:
 
 class Extension (extension.Extension):
     
-    version = (0, 2)
-    name = "Activate Pasteboard"
-    author = "Mark Saliers"
-    description = \
-      "Captures contents of system clipboard as text and images are copied" + \
-      "from other applications. Suffers from same limitations as standard " + \
-      "copy/paste routines do under Windows. "
-
     def __init__(self, app):
         """Initialize extension"""
         
         extension.Extension.__init__(self, app)
         self.app = app
 
-        self._ui_id = {}
-        self._action_groups = {}
-
 
     def get_depends(self):
-        return [("keepnote", ">=", (0, 6, 3))]
+        return [("keepnote", ">=", (0, 7, 1))]
 
 
     def on_add_ui(self, window):
         """Initialize extension for a particular window"""
-        self._action_groups[window] = gtk.ActionGroup("MainWindow")
 
         # add menu options
+        self.add_action(
+            window, "Activate Pasteboard", "_Pasteboard...",
+            lambda w: self.on_activate_clipboard(window, window.get_notebook()),
+            tooltip=_("Capture clipboard activity"),
+            stock_id=gtk.STOCK_ADD)
 
-        self._action_groups[window].add_actions([
-            ("Activate Pasteboard", gtk.STOCK_ADD, "_Pasteboard...",
-             "", _("Capture clipboard activity"),
-             lambda w: self.on_activate_clipboard(window,window.get_notebook()) ),
-            ])
         #lambda w: self.on_activate_clipboard(window, window.get_notebook(),debug)),
-        window.get_uimanager().insert_action_group(
-            self._action_groups[window], 0)
         
-        # TODO: Fix up the ordering on the affected menus.
-        self._ui_id[window] = window.get_uimanager().add_ui_from_string(
+        self.add_ui(window,
             """
             <ui>
             <menubar name="main_menu_bar">
@@ -196,7 +135,7 @@ class Extension (extension.Extension):
             """)
 
 
-    def on_activate_clipboard(self, window,node) : #widget="focus"):
+    def on_activate_clipboard(self, window, node):
         """Callback from gui verifying desire to start clipboard capture"""
         #debug.write("on_activate_ui/top\n")
         #= window.get_notebook()
@@ -206,12 +145,12 @@ class Extension (extension.Extension):
         #  debug.write("node status sent OAC was NOT None\n")
 
         if Pannier.pannier :
-          pkg = Pannier.pannier
-          #debug.write("Using old package\n")
+            pkg = Pannier.pannier
+            #debug.write("Using old package\n")
         else :
-          pkg = Pannier(window,node,data="starting")
-          Pannier.pannier = pkg
-          #debug.write("just made package\n")
+            pkg = Pannier(window, node, data="starting")
+            Pannier.pannier = pkg
+            #debug.write("just made package\n")
 
         #if notebook is None:
         # if pkg.data is None :
@@ -227,18 +166,18 @@ class Extension (extension.Extension):
 
         #debug.write(result)
         
-        if pkg.paste_activated :
-          result = self.app.ask_yes_no("Deactivate pasteboard?", 
-                 "Pasteboard Activation", window)
-          if result :
-            pkg.paste_activated = False
-          return
-        else :
-          result = self.app.ask_yes_no("Activate pasteboard?", 
-                 "Pasteboard Activation", window)
-          if result :
-            pkg.paste_activated = True
-            self.activate_clipboard(pkg)
+        if pkg.paste_activated:
+            result = self.app.ask_yes_no("Deactivate pasteboard?", 
+                                         "Pasteboard Activation", window)
+            if result:
+                pkg.paste_activated = False
+            return
+        else:
+            result = self.app.ask_yes_no("Activate pasteboard?", 
+                                         "Pasteboard Activation", window)
+            if result:
+                pkg.paste_activated = True
+                self.activate_clipboard(pkg)
           
         #if result :
         # dialog = FileChooserDialog(
@@ -282,7 +221,7 @@ class Extension (extension.Extension):
 
         try:
             #activate_clipboard_capture(pkg)
-            gobject.timeout_add(1000, clipboard_capture_thread,pkg)
+            gobject.timeout_add(1000, clipboard_capture_thread,  pkg)
             #pkg.clipboard.request_text(clipboard_text_received,pkg)
             if pkg.window:
                 pkg.window.set_status("Capture Activated")
@@ -310,76 +249,124 @@ class Extension (extension.Extension):
             return False
 
 
-def clipboard_capture_thread(pkg) :
-  if pkg.paste_activated :
-    #if pkg.counter < 20 : # Debug to prevent runaway situation
-    #pkg.clipboard.request_text(clipboard_text_received,pkg)
-    insert_clipboard_page(pkg)
-    return True
-  else :
-    return False
+def clipboard_capture_thread(pkg):
+    if pkg.paste_activated:
+        #if pkg.counter < 20 : # Debug to prevent runaway situation
+        #pkg.clipboard.request_text(clipboard_text_received,pkg)
+        gtk.gdk.threads_enter()
+        insert_clipboard_page(pkg)
+        gtk.gdk.threads_leave()
+        return True
+    else:
+        return False
 
   
 def insert_clipboard_page(pkg) :
-  #debug.write("Inside of ICP\n")
-  #if pkg.textview is None :
-  #if pkg.editor is None :
+    #debug.write("Inside of ICP\n")
+    #if pkg.textview is None :
+    #if pkg.editor is None :
 
-  main_viewer = pkg.window.get_viewer() 
-  #debug.write("ICP - I seem to have gotten viewer\n")
-  #debug.write("main viewer class is: " + main_viewer.__class__.__name__ + "\n")
-  if isinstance(main_viewer, TabbedViewer):
-    #debug.write("main_viewer is instance of TabbedViewer\n")
-    viewer = main_viewer.get_current_viewer() 
-    #pkg.viewer = viewer
-    if isinstance(viewer, ThreePaneViewer):    
-      try: 
-        textview = viewer.editor._editor.get_textview() 
-        #pkg.editor = viewer.editor._editor
-        #pkg.textview = textview
-      except:
-        #debug.write("Exception getting textview\n")
+    main_viewer = pkg.window.get_viewer() 
+    #debug.write("ICP - I seem to have gotten viewer\n")
+    #debug.write("main viewer class is: " + main_viewer.__class__.__name__ + "\n")
+    textview = None
+    if isinstance(main_viewer, TabbedViewer):
+        viewer = main_viewer.get_current_viewer() 
+        if isinstance(viewer, ThreePaneViewer):    
+            try: 
+                textview = viewer.editor._editor.get_textview() 
+            except:
+                pass
+                #debug.write("Exception getting textview\n")
+    if textview is None:
         return
-    else:
-      #debug.write("Failed to get textview")
-      return
     
-    #textview = pkg.textview
 
-  #debug.write("viewer class is: " + viewer.__class__.__name__ + "\n")
-  tb = gtk.TextBuffer()
-  try: 
-    #textview.emit("paste-clipboard") # DEBUG
-    #return
+    #debug.write("viewer class is: " + viewer.__class__.__name__ + "\n")
+    try: 
+        #textview.emit("paste-clipboard") # DEBUG
+        
+        #debug.write("Trying ...")
+        if pkg.clipboard.wait_is_text_available():
+            #debug.write(" text\n")
+            last_text = pkg.clipboard.wait_for_text()
 
-    #debug.write("Trying ...")
-    if pkg.clipboard.wait_is_text_available() : 
-      #debug.write(" text\n")
-      last_text = pkg.clipboard.wait_for_text() 
-      if last_text != pkg.last_text :
-        #debug.write("trying to get textview\n")
-        #textview = viewer.editor._editor.get_textview() 
-        #debug.write("got textview. Trying emit\n")
-        textview.emit("paste-clipboard")
-        #debug.write("Thinks its done emit\n")
-        #pkg.clipboard.set_text("\n\n")
-        textview.emit("paste-clipboard")
-        #pkg.clipboard.set_text(last_text)
-        pkg.last_text = last_text
-        pkg.clipboard.clear()
-        #pkg.clipboard.set_text("ZZZ")
-    else :
-    #elif pkg.clipboard.wait_is_image_available() :
-      #debug.write(" text\n")
-      #textview = viewer.editor._editor.get_textview() 
-      textview.emit("paste-clipboard")
-      pkg.clipboard.set_text("\n\n")
-      textview.emit("paste-clipboard")
-      pkg.last_text = "\n\n"
+            
+            if last_text and last_text != pkg.last_text:
+                #debug.write("trying to get textview\n")
+                #textview = viewer.editor._editor.get_textview() 
+                #debug.write("got textview. Trying emit\n") 
+                #textview.emit("paste-clipboard")
+                textview.get_textbuffer().insert_at_cursor(last_text)
+                #debug.write("Thinks its done emit\n")
+                #pkg.clipboard.set_text("\n\n")
+                #textview.emit("paste-clipboard")
+                #pkg.clipboard.set_text(last_text)
+                pkg.last_text = last_text
+                #pkg.clipboard.clear()
+                #pkg.clipboard.set_text("ZZZ")
+        else:
+            return
+            #elif pkg.clipboard.wait_is_image_available() :
+            #debug.write(" text\n")
+            #textview = viewer.editor._editor.get_textview() 
+            textview.emit("paste-clipboard")
+            pkg.clipboard.set_text("\n\n")
+            textview.emit("paste-clipboard")
+            pkg.last_text = "\n\n"
 
-  except:
-    #debug.write("Some error trying to emit clipboard\n") 
-    raise
-    #pass
+    except:
+        #debug.write("Some error trying to emit clipboard\n") 
+        #raise
+        keepnote.log_error()
+        pass
 
+
+
+#debug = open("c:/Program Files/KeepNote/extensions/capture_clipboard/debug.txt","w")
+#debug.write("beginning log\n")
+# (query-replace-regexp "^\s*debug" "#debug" nil nil)
+class Pannier :
+    """
+    Pannier class
+    I would have like to make this a singleton, but Python
+    is too #!@$ clumsy to allow that.
+    PARMS: window, node, data (string), debug (file name)
+    MAS 2011-02-21
+    """
+    pannier = None # Calling program has to be smart enough to set this 
+    #data = "orig"
+    #stage = 0
+    def __init__(self,window,node,data) :
+        #debug.write("Inside init\n")
+        #Pannier.stage += 1
+        #Pannier.pannier = Pannier(window,node,data)
+        #elif Pannier.stage == 1 :
+        #debug.write("Inside stage 1\n")
+        #Pannier.stage += 1
+        #self.debug = open(debug,"w")
+        self.window = window
+        self.node = node
+        #if self.node is None :
+          #debug.write("Node passed seems to be none\n")
+        #else :
+          #debug.write("Node received seems to be NOT none\n")
+        self.data = data
+        #else :
+        #debug.write("Somehow in final stage of pannier creation!\n")
+        #self.debug = Pannier.pannier.debug
+        #self.window = Pannier.pannier.window
+        #self.node = Pannier.pannier.node
+        #self.data = Pannier.pannier.data
+        self.clipboard = gtk.clipboard_get("CLIPBOARD") #gtk.gdk.SELECTION_CLIPBOARD)
+        self.clipboard.set_text("")
+        self.counter = 0
+        self.last_text = "" # Keeps track of last text pulled from clipboard
+        self.paste_activated = False
+        self.textview = None
+        self.editor = None 
+
+    def inc(self) :
+        self.counter += 1
+        return self.counter
 
