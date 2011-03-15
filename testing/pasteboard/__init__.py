@@ -94,12 +94,56 @@ class Extension (extension.Extension):
         extension.Extension.__init__(self, app)
         self.app = app
 
+        # remove this for 0.7.2
+        self._ui_id = {}         # needed only for 0.7.1
+        self._action_groups = {} # needed only for 0.7.1
+
 
     def get_depends(self):
         return [("keepnote", ">=", (0, 7, 1))]
 
 
     def on_add_ui(self, window):
+        """Initialize extension for a particular window"""
+        
+        self._action_groups[window] = gtk.ActionGroup("MainWindow")
+
+        # add menu options
+
+        self._action_groups[window].add_actions([
+            ("Activate Pasteboard", gtk.STOCK_ADD, "_Pasteboard...",
+             "", _("Capture clipboard activity"),
+             lambda w: self.on_activate_clipboard(window,window.get_notebook()) ),
+            ])
+
+        window.get_uimanager().insert_action_group(
+            self._action_groups[window], 0)
+        
+        # TODO: Fix up the ordering on the affected menus.
+        self._ui_id[window] = window.get_uimanager().add_ui_from_string(
+            """
+            <ui>
+            <menubar name="main_menu_bar">
+            <menu action="Edit">
+            <placeholder name="Viewer">
+            <menuitem action="Activate Pasteboard"/>
+            </placeholder>
+            </menu>
+            </menubar>
+            <menubar name="popup_menus">
+            <menu action="treeview_popup">
+            <menuitem action="Activate Pasteboard"/>
+            </menu>
+            <menu action="listview_popup">
+            <menuitem action="Activate Pasteboard"/>
+            </menu>
+            </menubar>
+            </ui>
+            """)
+
+
+    # this function will be used in keepnote 0.7.2
+    def on_add_ui_new(self, window):
         """Initialize extension for a particular window"""
 
         # add menu options
@@ -108,8 +152,6 @@ class Extension (extension.Extension):
             lambda w: self.on_activate_clipboard(window, window.get_notebook()),
             tooltip=_("Capture clipboard activity"),
             stock_id=gtk.STOCK_ADD)
-
-        #lambda w: self.on_activate_clipboard(window, window.get_notebook(),debug)),
         
         self.add_ui(window,
             """
@@ -297,7 +339,7 @@ def insert_clipboard_page(pkg) :
                 #textview = viewer.editor._editor.get_textview() 
                 #debug.write("got textview. Trying emit\n") 
                 #textview.emit("paste-clipboard")
-                textview.get_textbuffer().insert_at_cursor(last_text)
+                textview.get_buffer().insert_at_cursor(last_text)
                 #debug.write("Thinks its done emit\n")
                 #pkg.clipboard.set_text("\n\n")
                 #textview.emit("paste-clipboard")
