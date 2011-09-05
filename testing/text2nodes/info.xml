@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<extension>
+  <dict>
+    <key>version</key>
+    <string>0.1</string>
+    <key>name</key>
+    <string>Text2Nodes</string>
+    <key>author</key>
+    <string>Derek O'Connell</string>
+    <key>email</key>
+    <string>doconnel@gmail.com</string>
+    <key>website</key>
+    <string>http://keepnote.org</string>
+    <key>description</key>
+    <string>Creates nodes from selected text (one per line)</string>
+  </dict>
+</extension>
